@@ -19,7 +19,7 @@ package main
 import (
 	"errors"
 	"fmt"
-	"net/netip"
+	"net"
 	"sort"
 	"strconv"
 	"strings"
@@ -205,11 +205,11 @@ func trueFilter(args []string) (nodeFilter, error) {
 }
 
 func ipFilter(args []string) (nodeFilter, error) {
-	prefix, err := netip.ParsePrefix(args[0])
+	_, cidr, err := net.ParseCIDR(args[0])
 	if err != nil {
 		return nil, err
 	}
-	f := func(n nodeJSON) bool { return prefix.Contains(n.N.IPAddr()) }
+	f := func(n nodeJSON) bool { return cidr.Contains(n.N.IP()) }
 	return f, nil
 }
 

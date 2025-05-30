@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"maps"
 	"math"
 	"net"
 	"sync"
@@ -216,7 +215,10 @@ func (sn *SimNode) ServeRPC(conn *websocket.Conn) error {
 // simulation_snapshot RPC method
 func (sn *SimNode) Snapshots() (map[string][]byte, error) {
 	sn.lock.RLock()
-	services := maps.Clone(sn.running)
+	services := make(map[string]node.Lifecycle, len(sn.running))
+	for name, service := range sn.running {
+		services[name] = service
+	}
 	sn.lock.RUnlock()
 	if len(services) == 0 {
 		return nil, errors.New("no running services")
@@ -313,7 +315,11 @@ func (sn *SimNode) Services() []node.Lifecycle {
 func (sn *SimNode) ServiceMap() map[string]node.Lifecycle {
 	sn.lock.RLock()
 	defer sn.lock.RUnlock()
-	return maps.Clone(sn.running)
+	services := make(map[string]node.Lifecycle, len(sn.running))
+	for name, service := range sn.running {
+		services[name] = service
+	}
+	return services
 }
 
 // Server returns the underlying p2p.Server

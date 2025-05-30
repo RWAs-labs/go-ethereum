@@ -147,9 +147,9 @@ func (t *table) NewIterator(prefix []byte, start []byte) ethdb.Iterator {
 	}
 }
 
-// Stat returns the statistic data of the database.
-func (t *table) Stat() (string, error) {
-	return t.db.Stat()
+// Stat returns a particular internal stat of the database.
+func (t *table) Stat(property string) (string, error) {
+	return t.db.Stat(property)
 }
 
 // Compact flattens the underlying data store for the given key range. In essence,

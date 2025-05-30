@@ -332,7 +332,11 @@ func ServiceGetAccountRangeQuery(chain *core.BlockChain, req *GetAccountRangePac
 			return nil, nil
 		}
 	}
-	return accounts, proof.List()
+	var proofs [][]byte
+	for _, blob := range proof.List() {
+		proofs = append(proofs, blob)
+	}
+	return accounts, proofs
 }
 
 func ServiceGetStorageRangesQuery(chain *core.BlockChain, req *GetStorageRangesPacket) ([][]*StorageData, [][]byte) {
@@ -434,7 +438,9 @@ func ServiceGetStorageRangesQuery(chain *core.BlockChain, req *GetStorageRangesP
 					return nil, nil
 				}
 			}
-			proofs = append(proofs, proof.List()...)
+			for _, blob := range proof.List() {
+				proofs = append(proofs, blob)
+			}
 			// Proof terminates the reply as proofs are only added if a node
 			// refuses to serve more data (exception when a contract fetch is
 			// finishing, but that's that).

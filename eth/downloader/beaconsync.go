@@ -106,7 +106,7 @@ func (b *beaconBackfiller) resume() {
 		}()
 		// If the downloader fails, report an error as in beacon chain mode there
 		// should be no errors as long as the chain we're syncing to is valid.
-		if err := b.downloader.synchronise(mode, b.started); err != nil {
+		if err := b.downloader.synchronise("", common.Hash{}, nil, nil, mode, true, b.started); err != nil {
 			log.Error("Beacon backfilling failed", "err", err)
 			return
 		}
@@ -202,7 +202,7 @@ func (d *Downloader) findBeaconAncestor() (uint64, error) {
 	case SnapSync:
 		chainHead = d.blockchain.CurrentSnapBlock()
 	default:
-		panic("unknown sync mode")
+		chainHead = d.lightchain.CurrentHeader()
 	}
 	number := chainHead.Number.Uint64()
 
@@ -222,7 +222,7 @@ func (d *Downloader) findBeaconAncestor() (uint64, error) {
 	case SnapSync:
 		linked = d.blockchain.HasFastBlock(beaconTail.ParentHash, beaconTail.Number.Uint64()-1)
 	default:
-		panic("unknown sync mode")
+		linked = d.blockchain.HasHeader(beaconTail.ParentHash, beaconTail.Number.Uint64()-1)
 	}
 	if !linked {
 		// This is a programming error. The chain backfiller was called with a
@@ -257,7 +257,7 @@ func (d *Downloader) findBeaconAncestor() (uint64, error) {
 		case SnapSync:
 			known = d.blockchain.HasFastBlock(h.Hash(), n)
 		default:
-			panic("unknown sync mode")
+			known = d.lightchain.HasHeader(h.Hash(), n)
 		}
 		if !known {
 			end = check
@@ -268,9 +268,9 @@ func (d *Downloader) findBeaconAncestor() (uint64, error) {
 	return start, nil
 }
 
-// fetchHeaders feeds skeleton headers to the downloader queue for scheduling
+// fetchBeaconHeaders feeds skeleton headers to the downloader queue for scheduling
 // until sync errors or is finished.
-func (d *Downloader) fetchHeaders(from uint64) error {
+func (d *Downloader) fetchBeaconHeaders(from uint64) error {
 	var head *types.Header
 	_, tail, _, err := d.skeleton.Bounds()
 	if err != nil {
@@ -289,9 +289,6 @@ func (d *Downloader) fetchHeaders(from uint64) error {
 		localHeaders = d.readHeaderRange(tail, int(count))
 		log.Warn("Retrieved beacon headers from local", "from", from, "count", count)
 	}
-	fsHeaderContCheckTimer := time.NewTimer(fsHeaderContCheck)
-	defer fsHeaderContCheckTimer.Stop()
-
 	for {
 		// Some beacon headers might have appeared since the last cycle, make
 		// sure we're always syncing to all available ones
@@ -384,9 +381,8 @@ func (d *Downloader) fetchHeaders(from uint64) error {
 		}
 		// State sync still going, wait a bit for new headers and retry
 		log.Trace("Pivot not yet committed, waiting...")
-		fsHeaderContCheckTimer.Reset(fsHeaderContCheck)
 		select {
-		case <-fsHeaderContCheckTimer.C:
+		case <-time.After(fsHeaderContCheck):
 		case <-d.cancelCh:
 			return errCanceled
 		}

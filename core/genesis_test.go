@@ -304,25 +304,25 @@ func TestVerkleGenesisCommit(t *testing.T) {
 		},
 	}
 
-	expected := common.FromHex("14398d42be3394ff8d50681816a4b7bf8d8283306f577faba2d5bc57498de23b")
+	expected := common.Hex2Bytes("14398d42be3394ff8d50681816a4b7bf8d8283306f577faba2d5bc57498de23b")
 	got := genesis.ToBlock().Root().Bytes()
 	if !bytes.Equal(got, expected) {
 		t.Fatalf("invalid genesis state root, expected %x, got %x", expected, got)
 	}
 
 	db := rawdb.NewMemoryDatabase()
-	triedb := triedb.NewDatabase(db, triedb.VerkleDefaults)
+	triedb := triedb.NewDatabase(db, &triedb.Config{IsVerkle: true, PathDB: pathdb.Defaults})
 	block := genesis.MustCommit(db, triedb)
 	if !bytes.Equal(block.Root().Bytes(), expected) {
-		t.Fatalf("invalid genesis state root, expected %x, got %x", expected, block.Root())
+		t.Fatalf("invalid genesis state root, expected %x, got %x", expected, got)
 	}
 
 	// Test that the trie is verkle
 	if !triedb.IsVerkle() {
 		t.Fatalf("expected trie to be verkle")
 	}
-	vdb := rawdb.NewTable(db, string(rawdb.VerklePrefix))
-	if !rawdb.HasAccountTrieNode(vdb, nil) {
+
+	if !rawdb.ExistsAccountTrieNode(db, nil) {
 		t.Fatal("could not find node")
 	}
 }
